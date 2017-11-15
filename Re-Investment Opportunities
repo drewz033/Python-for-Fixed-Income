@@ -1,0 +1,152 @@
+#this code allows PM's and traders to determine best possible re-investment opportunities for fixed income products based
+#off of account duration and account convexity. Parameters are set to a firm's target duration and convexity. You will need duration
+#and convexity information in your original spreadsheets
+
+import pandas as pd
+import numpy as np
+df_orders=pd.read_excel(('#excelfilepath'))
+xls=pd.ExcelFile('#excelfilepath')
+
+#follwoing code breaks different fixed income products into data frames
+df_cal=df_orders[df_orders['Symbol']=='calmuni']
+df_ma=df_orders[df_orders['Symbol']=='massmuni']
+df_genmkt=df_orders[df_orders['Symbol']=='genmktmuni']
+
+
+#sorts
+df_cal['Outstanding Orders']=pd.cut(df_cal.Duration,
+                                   bins=[-np.inf,2.5,3.5,np.inf],
+                                   labels=['need 4-6 year paper','need 3-5 year paper','need 1-3 year paper'])
+
+df_ma['Outstanding Orders']=pd.cut(df_ma.Duration,
+                                   bins=[-np.inf,2.5,3.5,np.inf],
+                                   labels=['need 4-6 year paper','need 3-5 year paper','need 1-3 year paper'])
+
+df_genmkt['Outstanding Orders']=pd.cut(df_genmkt.Duration,
+                                   bins=[-np.inf,2.5,3.5,np.inf],
+                                   labels=['need 4-6 year paper','need 3-5 year paper'])
+df_genmkt['Extension Risk']=pd.cut(df_genmkt.CVX,
+                                   bins=[-np.inf,-.3,-.10,np.inf],
+                                   labels=['bullets','1-9 year extension risk','10-15 year extension risk'])
+
+df_ma['Extension Risk']=pd.cut(df_ma.CVX,
+                                   bins=[-np.inf,-.3,-.10,np.inf],
+                                   labels=['bullets','1-9 year extension risk','10-15 year extension risk'])
+df_cal['Extension Risk']=pd.cut(df_cal.CVX,
+                                   bins=[-np.inf,-.3,-.10,np.inf],
+                                   labels=['bullets','1-9 year extension risk','10-15 year extension risk'])
+df_calorders=df_cal.sort_values(['Outstanding Orders','Extension Risk'],ascending=[1,0])
+df_maorders=df_ma.sort_values(['Outstanding Orders','Extension Risk'],ascending=[1,0])
+df_genmktorders=df_genmkt.sort_values(['Outstanding Orders','Extension Risk'],ascending=[1,0])
+
+
+
+
+
+df_shortcal=df_calorders[df_calorders['Outstanding Orders']=='need 1-3 year paper']
+df_intermediatecal=df_calorders[df_calorders['Outstanding Orders']=='3-5 year paper']
+df_longercal=df_calorders[df_calorders['Outstanding Orders']=='need 4-6 year paper']
+
+df_shortma=df_maorders[df_maorders['Outstanding Orders']=='need 1-3 year paper']
+df_intermediatema=df_maorders[df_maorders['Outstanding Orders']=='3-5 year paper']
+df_longerma=df_maorders[df_maorders['Outstanding Orders']=='need 4-6 year paper']
+
+df_shortgenmkt=df_genmktorders[df_genmktorders['Outstanding Orders']=='need 1-3 year paper']
+df_intermediategenmkt=df_genmktorders[df_genmktorders['Outstanding Orders']=='3-5 year paper']
+df_longergenmkt=df_genmktorders[df_genmktorders['Outstanding Orders']=='need 4-6 year paper']
+
+
+
+
+Total=df_shortcal['Order Quantity'].sum()
+df_shortcal.loc['Total']=pd.Series(df_shortcal['Order Quantity'].sum(),index=['Order Quantity'])
+df_totalshortcal=df_shortcal[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_intermediatecal['Order Quantity'].sum()
+df_intermediatecal.loc['Total']=pd.Series(df_intermediatecal['Order Quantity'].sum(),index=['Order Quantity'])
+df_totalintermediatecal=df_intermediatecal[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_longercal['Order Quantity'].sum()
+df_longercal.loc['Total']=pd.Series(df_longercal['Order Quantity'].sum(),index=['Order Quantity'])
+df_totallongercal=df_longercal[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_shortma['Order Quantity'].sum()
+df_shortma.loc['Total']=pd.Series(df_shortma['Order Quantity'].sum(),index=['Order Quantity'])
+df_totalshortma=df_shortma[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_intermediatema['Order Quantity'].sum()
+df_intermediatema.loc['Total']=pd.Series(df_intermediatema['Order Quantity'].sum(),index=['Order Quantity'])
+df_totalintermediatema=df_intermediatema[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_intermediatema['Order Quantity'].sum()
+df_intermediatema.loc['Total']=pd.Series(df_intermediatema['Order Quantity'].sum(),index=['Order Quantity'])
+df_totalintermediatema=df_intermediatema[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_longerma['Order Quantity'].sum()
+df_longerma.loc['Total']=pd.Series(df_longerma['Order Quantity'].sum(),index=['Order Quantity'])
+df_totallongerma=df_longerma[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_shortgenmkt['Order Quantity'].sum()
+df_shortgenmkt.loc['Total']=pd.Series(df_shortgenmkt['Order Quantity'].sum(),index=['Order Quantity'])
+df_totalshortgenmkt=df_shortgenmkt[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_intermediategenmkt['Order Quantity'].sum()
+df_intermediategenmkt.loc['Total']=pd.Series(df_intermediategenmkt['Order Quantity'].sum(),index=['Order Quantity'])
+df_totalintermediategenmkt=df_intermediategenmkt[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+
+Total=df_longergenmkt['Order Quantity'].sum()
+df_longergenmkt.loc['Total']=pd.Series(df_longergenmkt['Order Quantity'].sum(),index=['Order Quantity'])
+df_totallongergenmkt=df_longergenmkt[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
+
+
+
+#merge all data frames together
+df_all=pd.concat([df_totalshortcal,df_totalintermediatecal,df_totallongercal,df_totalshortma,df_totalintermediatema,df_totallongerma,df_totalshortgenmkt,df_totalintermediategenmkt,df_totallongergenmkt])
+
+
+
+
+
+
+out_path=('#filepath')
+writer=pd.ExcelWriter(out_path,engine='xlsxwriter')
+df_all.to_excel(writer,sheet_name="Open Orders",index=False)
+
+
+
+
+writer.save()
+
+
+
+
+
+                                   
+                  
