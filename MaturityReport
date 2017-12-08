@@ -1,0 +1,16 @@
+#the following code sorts data to filter out sales as well as MBS paydowns and bring together a list of bonds either called or matured
+
+import pandas as pd
+#save down csv files containing all maturities and open into a dataframe
+df=pd.read_csv('#filepath')
+
+#drop NA removes all the NAN values on the spreadsheet
+df_new=df.dropna(thresh=2)
+
+#need to sort dataframe by Rel Man, Tran Code, and Open Closed Status. Do so by creating new data frames for each sort
+df_date = df_sort[df_sort['Trade Date'] == df_sort['Settle Date']]
+df_tran=df_date[df_date['Tran Code']=='sl']
+df_open=df_tran[df_tran['Status']=='Open']
+df_PM=df_open.sort_values(['Rel Man','Portfolio Code'],ascending=[1,0])
+
+df_PM.to_csv('#filepath',index=False)
