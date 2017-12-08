@@ -1,0 +1,32 @@
+#this code automatically e-mails portfolio managers with a list of their called or matured bonds as created by the maturity report
+#code in the repository
+
+import smtplib,ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email.utils import formatdate
+from email import encoders
+
+toaddress='#allemailaddresses'
+subject='Maturities and Calls'
+msg=MIMEMultipart()
+msg['Subject']=subject
+msg['From']=me
+msg['To']=toaddress
+msg.preamble="\nThis is an automated message. Please see attached for a list of bonds matured or called in your accounts. Please review your tab and let the Fixed Income Team know of any notes. Our default option is to re-invest all maturities and calls."
+msg.attach(MIMEText(msg.preamble,'plain'))
+
+part=MIMEBase('application',"octet-stream")
+part.set_payload(open('#filepath','rb').read())
+encoders.encode_base64(part)
+part.add_header('Content-Disposition','attachment;filename="maturitiesandcalls.xlsx"')
+msg.attach(part)
+try:
+    mail=smtplib.SMTP('#smtp',#port)
+    mail.ehlo()
+    mail.starttls()
+    mail.login('#youremailaddress','#emailpassword')
+    mail.sendmail(me,toaddress.split(','),msg.as_string())
+except SMTPException as error:
+    print 'error'
