@@ -1,3 +1,3 @@
 # Python-for-Fixed-Income
 Code Used to Help Manage Fixed Income Portfolios
-#operational processes to better help steamline fixed income investing for client facing portfolio managers
+Operational processes to better help steamline fixed income investing for client facing portfolio managers
