@@ -7,13 +7,13 @@ import numpy as np
 df_orders=pd.read_excel(('#excelfilepath'))
 xls=pd.ExcelFile('#excelfilepath')
 
-#follwoing code breaks different fixed income products into data frames
+#follwoing code breaks different fixed income products into data frames based of state of residence
 df_cal=df_orders[df_orders['Symbol']=='calmuni']
 df_ma=df_orders[df_orders['Symbol']=='massmuni']
 df_genmkt=df_orders[df_orders['Symbol']=='genmktmuni']
 
 
-#sorts
+#sorts by duration, convexity (using extension risk features)
 df_cal['Outstanding Orders']=pd.cut(df_cal.Duration,
                                    bins=[-np.inf,2.5,3.5,np.inf],
                                    labels=['need 4-6 year paper','need 3-5 year paper','need 1-3 year paper'])
@@ -42,7 +42,7 @@ df_genmktorders=df_genmkt.sort_values(['Outstanding Orders','Extension Risk'],as
 
 
 
-
+#send out best re-investment opportuntiy based off of target account duration and target convexity
 df_shortcal=df_calorders[df_calorders['Outstanding Orders']=='need 1-3 year paper']
 df_intermediatecal=df_calorders[df_calorders['Outstanding Orders']=='3-5 year paper']
 df_longercal=df_calorders[df_calorders['Outstanding Orders']=='need 4-6 year paper']
@@ -64,7 +64,7 @@ df_totalshortcal=df_shortcal[['Symbol','Order Quantity','State','Outstanding Ord
 
 
 
-
+#sums the results and aggregates data
 Total=df_intermediatecal['Order Quantity'].sum()
 df_intermediatecal.loc['Total']=pd.Series(df_intermediatecal['Order Quantity'].sum(),index=['Order Quantity'])
 df_totalintermediatecal=df_intermediatecal[['Symbol','Order Quantity','State','Outstanding Orders','Extension Risk','Internal Comment']]
