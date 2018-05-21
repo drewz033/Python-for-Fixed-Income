@@ -1,0 +1,182 @@
+#below code sources muni bonds based off of state, coupon and spread. Helps investors or traders identify best execution prices for
+each bond structure.
+
+
+
+import numpy as np
+import pandas as pd
+
+
+
+
+#import IMGR message miner and bval AAA curve
+
+df_imgr=pd.read_csv('IMGR.csv')
+df_bval=pd.read_csv('BVAL.csv')
+
+
+
+
+
+
+#filter out for columns needed
+df_imgr_columns=df_imgr[['Reference Security','Source','Dealer','CUSIP','State','Short Name','Coupon','Maturity','Ask Yield To Worst',
+                       'Ask Size','Sender Name','Years to Maturity (from the settlement date)','Bid Workout Date (Years from Settle)']]
+
+
+
+
+
+#Round YTW years to nearest year so we can map it to a bval value
+df_imgr_columns['YTW Years']=df_imgr_columns['Bid Workout Date (Years from Settle)'].round(decimals=0)
+
+
+
+
+
+
+
+#map to bval value
+df_imgr_columns['AAA Yield']=df_imgr_columns['YTW Years'].map(df_bval['Yield'])
+
+
+
+
+
+
+
+#set parameters according to strategy
+df_imgr_coup=df_imgr_columns[df_imgr_columns['Coupon']>3.99]
+df_imgr_mat=df_imgr_coup[df_imgr_coup['Years to Maturity (from the settlement date)']<20]
+df_imgr_ytw=df_imgr_mat[df_imgr_mat['Bid Workout Date (Years from Settle)']<7]
+df_imgr_call=df_imgr_ytw[df_imgr_ytw['Ask Size']>9999]
+
+
+
+
+#calculate spread based off YTW and AAA tenor
+df_imgr_call['Spread']=df_imgr_call['Ask Yield To Worst']-df_imgr_call['AAA Yield']
+df_imgr_call=df_imgr_call[df_imgr_call['Spread']>-.05]
+
+
+
+
+
+
+#sort by state and highest spread
+
+df_state_spread_sort=df_imgr_call.sort_values(['State','Spread'],ascending=False)
+
+df_state_spread_sort=df_state_spread_sort.drop_duplicates(subset=['CUSIP'], keep='first')
+
+
+
+
+
+
+
+#idnetify which duration bucket each bond belongs in
+df_state_spread_sort['Duration']=pd.cut(df_state_spread_sort['Bid Workout Date (Years from Settle)'],
+                        bins=[-np.inf,2.5,3.5,np.inf],
+                        labels=['3','2','1'])
+
+df_state_spread_sort['Maturity to Call Years']=df_state_spread_sort['Years to Maturity (from the settlement date)']-df_state_spread_sort['Bid Workout Date (Years from Settle)']
+
+df_state_spread_sort['Extension Risk']=pd.cut(df_state_spread_sort['Maturity to Call Years'],
+                        bins=[-.999,10,15,30],
+                        labels=['CVX3','CVX2','CVX1'])
+
+
+
+
+
+
+
+#join duration and state identifiers to give each bond unique duration identifier
+
+df_join=df_state_spread_sort[['State','Duration']].apply(lambda x: ''.join(x),axis=1)
+
+
+
+
+
+
+#merge dataframes
+df_identifier=pd.concat([df_state_spread_sort,df_join],axis=1)
+
+
+
+
+
+#join duration and convexity identifier
+df_getid=df_identifier[[0,'Extension Risk']].apply(lambda x: ''.join(x),axis=1)
+
+
+
+#create the final data frame
+
+df_finalid=pd.concat([df_state_spread_sort,df_getid],axis=1)
+
+
+df_finalid.rename(columns={0:'Identifier'},inplace=True)
+
+#create state dataframes
+
+df_ma=df_finalid[df_finalid['State']=='MA']
+df_ca=df_finalid[df_finalid['State']=='CA']
+df_ny=df_finalid[df_finalid['State']=='NY']
+df_wi=df_finalid[df_finalid['State']=='WI']
+df_me=df_finalid[df_finalid['State']=='ME']
+df_ct=df_finalid[df_finalid['State']=='CT']
+df_fl=df_finalid[df_finalid['State']=='FL']
+df_ga=df_finalid[df_finalid['State']=='GA']
+df_nc=df_finalid[df_finalid['State']=='NC']
+df_sc=df_finalid[df_finalid['State']=='SC']
+df_va=df_finalid[df_finalid['State']=='VA']
+df_pa=df_finalid[df_finalid['State']=='PA']
+df_oh=df_finalid[df_finalid['State']=='OH']
+df_wa=df_finalid[df_finalid['State']=='WA']
+df_or=df_finalid[df_finalid['State']=='OR']
+df_tx=df_finalid[df_finalid['State']=='TX']
+df_il=df_finalid[df_finalid['State']=='IL']
+df_ri=df_finalid[df_finalid['State']=='RI']
+df_vt=df_finalid[df_finalid['State']=='VT']
+df_mi=df_finalid[df_finalid['State']=='MI']
+df_mn=df_finalid[df_finalid['State']=='MN']
+df_tn=df_finalid[df_finalid['State']=='TN']
+df_nh=df_finalid[df_finalid['State']=='NH']
+df_co=df_finalid[df_finalid['State']=='CO']
+
+
+#open the open orders spreadsheet
+
+df_open_orders=pd.read_csv('my_orders.csv')
+
+#merge open orders onto IMGR bonds that are being shown
+df_merged=pd.merge(df_open_orders,df_finalid,on='Identifier')
+
+
+#create for loop that allocates each bond with highest spread to open orders for the day
+
+df_buys = pd.DataFrame()
+for s in df_merged['Identifier'].unique():
+    df_temp = df_merged[df_merged['Identifier']==s]
+    available = df_open_orders[df_open_orders['Identifier']==s]['Max Buys'].values[0]
+    for index, row in df_temp.iterrows():
+        row['Amount bought'] = row['Ask Size'] if row['Ask Size']<=available else available
+        available -= row['Ask Size']
+        df_buys = pd.concat([df_buys,row.to_frame().T],axis=0)
+
+df_buys['Amount bought'][df_buys['Amount bought']<0]=0
+
+#create new daraframe showing final purchases for the day
+df_finalbuys=df_buys[df_buys['Amount bought'] !=0]
+
+
+
+#save to as CSV, e-mail purchases to brokers
+
+df_finalbuys.to_csv('file path',index=False)
+
+
+
